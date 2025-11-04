@@ -111,14 +111,19 @@ pygame1/
 ├── index.py              # Main game file
 ├── README.md             # This file
 ├── requirements.txt      # Python dependencies
-├── Archer/              # Archer character animations
-│   ├── Idle_east.gif
-│   ├── Idle_west.gif
-│   ├── archer_walk.gif
-│   ├── archer_walk_west.gif
-│   ├── Run_east.gif
-│   ├── Run_west.gif
-│   └── ...
+├── tiled_converter.py    # Tiled → scene converter (used by the game at runtime)
+├── Characters/          # Character sprites and animations
+│   └── Archer/          # Archer character animations
+│       ├── Idle_east.gif
+│       ├── Idle_west.gif
+│       ├── archer_walk.gif
+│       ├── archer_walk_west.gif
+│       ├── Run_east.gif
+│       ├── Run_west.gif
+│       ├── Attack_1_east.gif
+│       ├── Shot_1_east.gif
+│       ├── Arrow_east.png
+│       └── ...
 ├── Items/               # Collectible item sprites
 │   └── sword.png
 ├── Tilesets/            # Tilesets and scene data
@@ -126,10 +131,9 @@ pygame1/
 │   ├── cave_1.png / cave_2.png / Inner.png ...
 │   ├── objects.json     # Object definitions by tileset
 │   └── scenes.json      # Scene configurations
-├── Maps/                # Tiled source maps (.json/.tmj)
-│   ├── cave_1.json
-│   └── cave_2.json
-└── tiled_converter.py   # Tiled → scene converter (used by the game at runtime)
+└── Maps/                # Tiled source maps (.json/.tmj)
+    ├── cave_1.json
+    └── cave_2.json
 ```
 
 ## Configuration

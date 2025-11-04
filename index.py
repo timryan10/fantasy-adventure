@@ -507,7 +507,7 @@ archer_animation_map = {
 }
 
 for direction, filename in archer_animation_map.items():
-    frames, durations = load_gif_frames(os.path.join('Archer', filename))
+    frames, durations = load_gif_frames(os.path.join('Characters', 'Archer', filename))
     animation_data[direction] = {
         'frames': frames,
         'durations': durations,
@@ -518,7 +518,7 @@ for direction, filename in archer_animation_map.items():
 
 # Optional combat animations (non-looping), loaded if present
 def _maybe_add_animation(key, filename, loop=False):
-    path = os.path.join('Archer', filename)
+    path = os.path.join('Characters', 'Archer', filename)
     if os.path.exists(path):
         frames, durations = load_gif_frames(path)
         animation_data[key] = {
@@ -541,11 +541,11 @@ _maybe_add_animation('shot2_west', 'Shot_2_west.gif', loop=False)
 # Load static facing images (using first frame of Idle animations)
 facing_images = {}
 # Load east idle
-idle_east_frames, _ = load_gif_frames(os.path.join('Archer', 'Idle_east.gif'))
+idle_east_frames, _ = load_gif_frames(os.path.join('Characters', 'Archer', 'Idle_east.gif'))
 facing_images['east'] = idle_east_frames[0]
 
 # Load west idle
-idle_west_frames, _ = load_gif_frames(os.path.join('Archer', 'Idle_west.gif'))
+idle_west_frames, _ = load_gif_frames(os.path.join('Characters', 'Archer', 'Idle_west.gif'))
 facing_images['west'] = idle_west_frames[0]
 
 # Track the last direction the player was facing
@@ -641,8 +641,8 @@ ARROW_SPAWN_OFFSET_X_WEST = 0
 ARROW_SPAWN_OFFSET_Y = -4
 
 # Load projectile images
-arrow_east_img = pygame.image.load(os.path.join('Archer', 'Arrow_east.png')).convert_alpha()
-arrow_west_img = pygame.image.load(os.path.join('Archer', 'Arrow_west.png')).convert_alpha()
+arrow_east_img = pygame.image.load(os.path.join('Characters', 'Archer', 'Arrow_east.png')).convert_alpha()
+arrow_west_img = pygame.image.load(os.path.join('Characters', 'Archer', 'Arrow_west.png')).convert_alpha()
 
 # Active projectiles
 projectiles = []  # each: {x,y,vx,vy,img,dist}
