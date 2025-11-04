@@ -26,6 +26,7 @@ def clamp_camera_to_map(player_x, player_y, map_width, map_height):
     cam_x = max(0, min(cam_x, map_width - SCREEN_WIDTH))
     cam_y = max(0, min(cam_y, map_height - SCREEN_HEIGHT))
     return cam_x, cam_y
+show_player_hitbox_overlay = False  # Toggle with F5
 
 # --- TILEMAP SYSTEM ---
 TILE_SIZE = 16
@@ -67,8 +68,25 @@ def load_tileset(tileset_name):
             rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
             tile = tileset_img.subsurface(rect).copy()
             tiles.append(tile)
-    
     return tiles
+run = True
+while run:
+    # ...existing code...
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F6:
+                show_collision_overlay = not show_collision_overlay
+                print(f"[DEBUG] Collision overlay: {'ON' if show_collision_overlay else 'OFF'}")
+            elif event.key == pygame.K_F5:
+                show_player_hitbox_overlay = not show_player_hitbox_overlay
+                print(f"[DEBUG] Player hitbox overlay: {'ON' if show_player_hitbox_overlay else 'OFF'}")
+
+    # ...existing code for drawing, movement, etc...
+
+    # ...existing code for drawing player...
+
 
 def draw_tilemap_single(surface, tilemap, tiles, camera_x=0, camera_y=0):
     """Draw using a single tileset where tilemap indexes directly reference 'tiles'."""
@@ -581,7 +599,7 @@ PLAYER_SPEED = 2
 PLAYER_RUN_SPEED = 4  # Running is faster than walking
 
 # Collision settings
-COLLISION_MARGIN = 4  # Pixels to shrink the player hitbox for more forgiving collision (higher = closer to walls)
+COLLISION_MARGIN = 0  # Pixels to shrink the player hitbox for more forgiving collision (higher = closer to walls)
 
 # Start with static animation
 current_animation = 'static'
@@ -916,9 +934,26 @@ while run:
         # Show walking/running animation
         current_frame_img = animation_data[current_animation]['frames'][anim['current_frame']]
         screen.blit(current_frame_img, player.move(-camera_x, -camera_y))
+
     else:
         # Show static facing image based on last direction
         screen.blit(facing_images[last_facing_direction], player.move(-camera_x, -camera_y))
+
+    # Draw player hitbox overlay if enabled (after player is drawn)
+    if show_player_hitbox_overlay:
+        hitbox = player.copy().inflate(-COLLISION_MARGIN, -COLLISION_MARGIN)
+        hitbox_rect = pygame.Rect(hitbox.x - camera_x, hitbox.y - camera_y, hitbox.width, hitbox.height)
+        hitbox_surface = pygame.Surface((hitbox.width, hitbox.height), pygame.SRCALPHA)
+        hitbox_surface.fill((0, 255, 0, 100))  # semi-transparent green
+        screen.blit(hitbox_surface, hitbox_rect)
+
+    # Draw player hitbox overlay if enabled (after player is drawn)
+    if show_player_hitbox_overlay:
+        hitbox = player.copy().inflate(-COLLISION_MARGIN, -COLLISION_MARGIN)
+        hitbox_rect = pygame.Rect(hitbox.x - camera_x, hitbox.y - camera_y, hitbox.width, hitbox.height)
+        hitbox_surface = pygame.Surface((hitbox.width, hitbox.height), pygame.SRCALPHA)
+        hitbox_surface.fill((0, 255, 0, 100))  # semi-transparent green
+        screen.blit(hitbox_surface, hitbox_rect)
 
     # Draw and handle items for the current scene
     for item in getattr(current_scene, 'items', []):
