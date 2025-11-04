@@ -70,9 +70,9 @@ python index.py
 | R (hold) | Show inventory |
 | J | Attack 1 (non-looping) |
 | K | Shoot (spawns arrow at the end of the shot animation) |
-| 1 / 2 / 3 / 4 | Switch to overworld / cave / house / cave_1 |
-| F1 / F2 / F3 / F4 | Teleport to overworld / cave / house / cave_1 |
-| F5 (hold) | Debug text overlay (coords, map size, margin) |
+| 1 / 2 / 3 / 4 / 5 | Switch to overworld / cave / house / cave_1 / cave_2 |
+| F1 / F2 / F3 / F4 / F5 | Teleport to overworld / cave / house / cave_1 / cave_2 |
+| F5 (hold, when not switching) | Debug text overlay (coords, map size, margin) |
 | F6 | Toggle collision grid overlay |
 | F7 / F8 | Decrease / increase collision margin |
 
@@ -127,7 +127,8 @@ pygame1/
 │   ├── objects.json     # Object definitions by tileset
 │   └── scenes.json      # Scene configurations
 ├── Maps/                # Tiled source maps (.json/.tmj)
-│   └── cave_1.json
+│   ├── cave_1.json
+│   └── cave_2.json
 └── tiled_converter.py   # Tiled → scene converter (used by the game at runtime)
 ```
 
@@ -154,6 +155,13 @@ ARROW_SPAWN_OFFSET_Y = -4  # Fine alignment of arrow spawn relative to player ce
 - Use object layers for doors, portals, and interactables
   - For portals, add a `portal` property with JSON: `{ "targetScene": "house", "spawnX": 260, "spawnY": 500 }`
 - Place your exported `.json/.tmj` maps in the `Maps/` folder — the game will auto-load them on start
+  - Scene names are derived from filenames (e.g., `cave_2.json` becomes scene `cave_2`)
+  - Use keys 1–5 or F1–F5 to switch/teleport to scenes that exist
+
+### Troubleshooting
+
+- Black window or extra window appears first: ensure you are running a single instance from one terminal. If you previously saw two windows, this has been fixed in the code by removing an accidental early loop.
+- If a scene key (e.g., cave_2) doesn’t work: check the console log for "Scene 'cave_2' not found" and verify the file is in `Maps/` and named correctly.
 
 ## Credits
 
