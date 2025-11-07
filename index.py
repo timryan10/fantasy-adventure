@@ -2,7 +2,7 @@ import pygame
 import os
 import pathlib
 import importlib
-from PIL import Image
+# from PIL import Image  # No longer needed - using sprite sheets instead of GIFs
 import time
 import math
 import json
@@ -471,56 +471,96 @@ class Inventory:
                 item_y = slot_y + 4
                 screen.blit(scaled_item, (item_x, item_y))
 
-def load_gif_frames(file_path):
+# Legacy GIF loader (no longer used - kept for reference)
+# def load_gif_frames(file_path):
+#     frames = []
+#     durations = []
+#     with Image.open(file_path) as gif:
+#         for frame in range(gif.n_frames):
+#             gif.seek(frame)
+#             # Convert to RGBA to handle transparency
+#             frame_surface = pygame.image.fromstring(
+#                 gif.convert("RGBA").tobytes(), gif.size, "RGBA"
+#             )
+#             frames.append(frame_surface)
+#             durations.append(gif.info['duration'] if 'duration' in gif.info else 100)
+#     return frames, durations
+
+def load_spritesheet_frames(json_path, png_path):
+    """Load Aseprite JSON Array format sprite sheet with frame durations."""
     frames = []
     durations = []
-    with Image.open(file_path) as gif:
-        for frame in range(gif.n_frames):
-            gif.seek(frame)
-            # Convert to RGBA to handle transparency
-            frame_surface = pygame.image.fromstring(
-                gif.convert("RGBA").tobytes(), gif.size, "RGBA"
-            )
-            frames.append(frame_surface)
-            durations.append(gif.info['duration'] if 'duration' in gif.info else 100)
+    
+    # Load JSON metadata
+    with open(json_path, 'r') as f:
+        data = json.load(f)
+    
+    # Load the sprite sheet PNG
+    sheet = pygame.image.load(png_path).convert_alpha()
+    
+    # Extract each frame based on the frame data
+    for frame_data in data['frames']:
+        frame_rect = frame_data['frame']
+        x, y, w, h = frame_rect['x'], frame_rect['y'], frame_rect['w'], frame_rect['h']
+        
+        # Create a surface for this frame
+        frame_surface = pygame.Surface((w, h), pygame.SRCALPHA)
+        frame_surface.blit(sheet, (0, 0), (x, y, w, h))
+        
+        frames.append(frame_surface)
+        durations.append(frame_data.get('duration', 100))
+    
     return frames, durations
 
-# Load all archer animations
-PLAYER_SCALE = 0.6  # Set between 0.6 and 1.0 to make the player smaller
+# Load all Lvl_1 character animations
+PLAYER_SCALE = 1.2  # Increase to make the player bigger (was 0.6)
 animation_data = {}
 
-# Map archer GIF files to animation directions
-archer_animation_map = {
-    'static': 'Idle_east.gif',  # Default idle animation
-    'north_east': 'archer_walk.gif',  # Walking up while facing east
-    'north_west': 'archer_walk_west.gif',  # Walking up while facing west
-    'south_east': 'archer_walk.gif',  # Walking down while facing east
-    'south_west': 'archer_walk_west.gif',  # Walking down while facing west
-    'east': 'archer_walk.gif',  # Walking right (reusing walk animation)
-    'west': 'archer_walk_west.gif',   # Walking left
-    'run_north_east': 'Run_east.gif',  # Running up while facing east
-    'run_north_west': 'Run_west.gif',  # Running up while facing west
-    'run_south_east': 'Run_east.gif',  # Running down while facing east
-    'run_south_west': 'Run_west.gif',  # Running down while facing west
-    'run_east': 'Run_east.gif',  # Running right
-    'run_west': 'Run_west.gif'   # Running left
+# Map Lvl_1 sprite sheet folders/files to animation directions
+# The folder structure is: Characters/Lvl_1/{AnimationFolder}/{AnimationName}_{direction}.json/.png
+lvl1_animation_map = {
+    'static': ('Sword_Idle', 'east'),  # Default idle animation
+    'north_east': ('Sword_Walk', 'east'),  # Walking up while facing east
+    'north_west': ('Sword_Walk', 'west'),  # Walking up while facing west
+    'south_east': ('Sword_Walk', 'east'),  # Walking down while facing east
+    'south_west': ('Sword_Walk', 'west'),  # Walking down while facing west
+    'east': ('Sword_Walk', 'east'),  # Walking right
+    'west': ('Sword_Walk', 'west'),   # Walking left
+    'north': ('Sword_Walk', 'north'),  # Walking north
+    'south': ('Sword_Walk', 'south'),  # Walking south
+    'run_north_east': ('Sword_Run', 'east'),  # Running up while facing east
+    'run_north_west': ('Sword_Run', 'west'),  # Running up while facing west
+    'run_south_east': ('Sword_Run', 'east'),  # Running down while facing east
+    'run_south_west': ('Sword_Run', 'west'),  # Running down while facing west
+    'run_east': ('Sword_Run', 'east'),  # Running right
+    'run_west': ('Sword_Run', 'west'),   # Running left
+    'run_north': ('Sword_Run', 'north'),  # Running north
+    'run_south': ('Sword_Run', 'south'),  # Running south
 }
 
-for direction, filename in archer_animation_map.items():
-    frames, durations = load_gif_frames(os.path.join('Characters', 'Archer', filename))
-    animation_data[direction] = {
-        'frames': frames,
-        'durations': durations,
-        'current_frame': 0,
-        'last_update': time.time() * 1000,  # ms
-        'loop': True
-    }
+for anim_key, (folder_name, direction) in lvl1_animation_map.items():
+    json_path = os.path.join('Characters', 'Lvl_1', folder_name, f'{folder_name}_{direction}.json')
+    png_path = os.path.join('Characters', 'Lvl_1', folder_name, f'{folder_name}_{direction}.png')
+    
+    if os.path.exists(json_path) and os.path.exists(png_path):
+        frames, durations = load_spritesheet_frames(json_path, png_path)
+        animation_data[anim_key] = {
+            'frames': frames,
+            'durations': durations,
+            'current_frame': 0,
+            'last_update': time.time() * 1000,  # ms
+            'loop': True
+        }
+    else:
+        print(f"[WARNING] Missing animation: {json_path} or {png_path}")
 
-# Optional combat animations (non-looping), loaded if present
-def _maybe_add_animation(key, filename, loop=False):
-    path = os.path.join('Characters', 'Archer', filename)
-    if os.path.exists(path):
-        frames, durations = load_gif_frames(path)
+# Helper to load combat animations (non-looping) from sprite sheets
+def _maybe_add_spritesheet_animation(key, folder_name, direction, loop=False):
+    json_path = os.path.join('Characters', 'Lvl_1', folder_name, f'{folder_name}_{direction}.json')
+    png_path = os.path.join('Characters', 'Lvl_1', folder_name, f'{folder_name}_{direction}.png')
+    
+    if os.path.exists(json_path) and os.path.exists(png_path):
+        frames, durations = load_spritesheet_frames(json_path, png_path)
         animation_data[key] = {
             'frames': frames,
             'durations': durations,
@@ -529,32 +569,52 @@ def _maybe_add_animation(key, filename, loop=False):
             'loop': loop
         }
 
-# Primary attack (melee/close) and shots (ranged)
-_maybe_add_animation('attack1_east', 'Attack_1_east.gif', loop=False)
-_maybe_add_animation('attack1_west', 'Attack_1_west.gif', loop=False)
-_maybe_add_animation('shot1_east', 'Shot_1_east.gif', loop=False)
-_maybe_add_animation('shot1_west', 'Shot_1_west.gif', loop=False)
-# Shot 2 files use slightly different naming
-_maybe_add_animation('shot2_east', 'Shot_2.gif', loop=False)
-_maybe_add_animation('shot2_west', 'Shot_2_west.gif', loop=False)
+# Load combat animations (attacks)
+_maybe_add_spritesheet_animation('attack1_east', 'Attack', 'East', loop=False)
+_maybe_add_spritesheet_animation('attack1_west', 'Attack', 'West', loop=False)
+_maybe_add_spritesheet_animation('attack1_north', 'Attack', 'North', loop=False)
+_maybe_add_spritesheet_animation('attack1_south', 'Attack', 'South', loop=False)
+
+# Load walk attack animations (optional)
+_maybe_add_spritesheet_animation('walk_attack_east', 'Sword_Walk_Attack', 'east', loop=False)
+_maybe_add_spritesheet_animation('walk_attack_west', 'Sword_Walk_Attack', 'west', loop=False)
+_maybe_add_spritesheet_animation('walk_attack_north', 'Sword_Walk_Attack', 'north', loop=False)
+_maybe_add_spritesheet_animation('walk_attack_south', 'Sword_Walk_Attack', 'south', loop=False)
+
+# Load run attack animations (optional)
+_maybe_add_spritesheet_animation('run_attack_east', 'Sword_Run_Attack', 'east', loop=False)
+_maybe_add_spritesheet_animation('run_attack_west', 'Sword_Run_Attack', 'west', loop=False)
+_maybe_add_spritesheet_animation('run_attack_north', 'Sword_Run_Attack', 'north', loop=False)
+_maybe_add_spritesheet_animation('run_attack_south', 'Sword_Run_Attack', 'south', loop=False)
 
 # Load static facing images (using first frame of Idle animations)
 facing_images = {}
-# Load east idle
-idle_east_frames, _ = load_gif_frames(os.path.join('Characters', 'Archer', 'Idle_east.gif'))
-facing_images['east'] = idle_east_frames[0]
-
-# Load west idle
-idle_west_frames, _ = load_gif_frames(os.path.join('Characters', 'Archer', 'Idle_west.gif'))
-facing_images['west'] = idle_west_frames[0]
+for direction in ['east', 'west', 'north', 'south']:
+    json_path = os.path.join('Characters', 'Lvl_1', 'Sword_Idle', f'Sword_Idle_{direction}.json')
+    png_path = os.path.join('Characters', 'Lvl_1', 'Sword_Idle', f'Sword_Idle_{direction}.png')
+    if os.path.exists(json_path) and os.path.exists(png_path):
+        frames, _ = load_spritesheet_frames(json_path, png_path)
+        facing_images[direction] = frames[0]
 
 # Track the last direction the player was facing
-last_facing_direction = 'east'  # Default facing direction (east or west only)
-last_horizontal_direction = 'east'  # Track last horizontal direction for north/south movement
+last_facing_direction = 'east'  # Default facing direction (now supports all 4 directions)
+last_horizontal_direction = 'east'  # Track last horizontal direction for diagonal movement
 
 # Attack state
 is_attacking = False
 current_attack = None  # e.g., 'attack1_east', 'shot1_west'
+
+# Health system
+player_max_hp = 100
+player_hp = 100
+
+# Health bar display settings
+HEALTH_BAR_WIDTH = 200
+HEALTH_BAR_HEIGHT = 20
+HEALTH_BAR_X = 20  # Position from left edge
+HEALTH_BAR_Y = 20  # Position from top edge
+HEALTH_BAR_BORDER = 2
+
 
 # Scale animation frames if needed (before creating the player's rect)
 def _scale_frames(frames, scale):
@@ -578,6 +638,45 @@ if PLAYER_SCALE and abs(PLAYER_SCALE - 1.0) > 1e-6:
         facing_images[direction] = pygame.transform.scale(img, new_size)
 
 # Movement speed (reduce this number to move slower)
+
+def draw_health_bar(surface, x, y, current_hp, max_hp, width, height, border=2):
+    """Draw a health bar with gradient color based on HP percentage."""
+    # Calculate HP percentage
+    hp_percent = max(0, min(1, current_hp / max_hp))
+    
+    # Determine bar color based on HP (green -> yellow -> red)
+    if hp_percent > 0.6:
+        # Green to yellow
+        red = int(255 * (1 - hp_percent) / 0.4 * 2)
+        green = 255
+    elif hp_percent > 0.3:
+        # Yellow to orange/red
+        red = 255
+        green = int(255 * (hp_percent - 0.3) / 0.3)
+    else:
+        # Red
+        red = 255
+        green = 0
+    
+    # Clamp RGB values to valid range [0, 255]
+    red = max(0, min(255, red))
+    green = max(0, min(255, green))
+    bar_color = (red, green, 0)
+    
+    # Draw background (dark gray)
+    bg_rect = pygame.Rect(x, y, width, height)
+    pygame.draw.rect(surface, (50, 50, 50), bg_rect)
+    
+    # Draw HP bar (filled portion)
+    if current_hp > 0:
+        hp_width = int(width * hp_percent)
+        hp_rect = pygame.Rect(x, y, hp_width, height)
+        pygame.draw.rect(surface, bar_color, hp_rect)
+    
+    # Draw border (white)
+    border_rect = pygame.Rect(x - border, y - border, width + border * 2, height + border * 2)
+    pygame.draw.rect(surface, (255, 255, 255), border_rect, border)
+
 PLAYER_SPEED = 2
 PLAYER_RUN_SPEED = 4  # Running is faster than walking
 
@@ -627,37 +726,215 @@ ITEM_IMAGES = {
 # Create inventory
 inventory = Inventory()
 
+
+# ==================== ENEMY SYSTEM ====================
+
+class Enemy:
+    """Enemy entity with animations, HP, and combat"""
+    def __init__(self, x, y, enemy_type='Rat1', facing='South'):
+        self.x = float(x)
+        self.y = float(y)
+        self.enemy_type = enemy_type
+        self.facing = facing
+        self.hp = 30  # Enemy health
+        self.max_hp = 30
+        self.is_attacking = False
+        self.is_hurt = False
+        self.is_dead = False
+        self.current_animation = 'idle'
+        self.current_frame = 0
+        self.last_update = time.time() * 1000
+        self.attack_cooldown = 0  # ms until can attack again
+        self.hurt_timer = 0  # Duration of hurt animation
+        self.death_timer = 0  # Duration of death animation
+        
+        # Load animations
+        self.animations = {}
+        self.load_animations()
+        
+        # Create rect for collision
+        if self.animations['idle']['frames']:
+            self.rect = self.animations['idle']['frames'][0].get_rect()
+            self.rect.x = int(x)
+            self.rect.y = int(y)
+    
+    def load_animations(self):
+        """Load all animations for this enemy type"""
+        anim_types = ['Idle', 'Walk', 'Attack', 'Hurt', 'Death']
+        directions = ['East', 'West', 'North', 'South']
+        
+        for anim_type in anim_types:
+            for direction in directions:
+                json_path = os.path.join('Enemies', self.enemy_type, anim_type, 
+                                        f'{self.enemy_type}_{anim_type}_{direction}.json')
+                png_path = os.path.join('Enemies', self.enemy_type, anim_type, 
+                                       f'{self.enemy_type}_{anim_type}_{direction}.png')
+                
+                if os.path.exists(json_path) and os.path.exists(png_path):
+                    frames, durations = load_spritesheet_frames(json_path, png_path)
+                    key = f'{anim_type.lower()}_{direction.lower()}'
+                    self.animations[key] = {
+                        'frames': frames,
+                        'durations': durations
+                    }
+        
+        # Set default idle animation
+        idle_key = f'idle_{self.facing.lower()}'
+        if idle_key in self.animations:
+            self.animations['idle'] = self.animations[idle_key]
+        else:
+            # Fallback to any available idle
+            for key in self.animations:
+                if key.startswith('idle_'):
+                    self.animations['idle'] = self.animations[key]
+                    break
+    
+    def take_damage(self, amount):
+        """Enemy takes damage"""
+        if self.is_dead:
+            return
+        
+        self.hp -= amount
+        self.is_hurt = True
+        self.hurt_timer = 300  # 300ms hurt animation
+        
+        if self.hp <= 0:
+            self.hp = 0
+            self.is_dead = True
+            self.death_timer = 1000  # 1 second death animation
+            print(f"[DEBUG] Enemy defeated!")
+    
+    def attack_player(self, player_rect):
+        """Check if enemy can attack player and deal damage using center-to-center distance"""
+        if self.is_dead or self.is_hurt or self.attack_cooldown > 0:
+            return 0
+        
+        # Calculate distance between enemy center and player center
+        enemy_center_x = self.rect.centerx
+        enemy_center_y = self.rect.centery
+        player_center_x = player_rect.centerx
+        player_center_y = player_rect.centery
+        
+        # Calculate Euclidean distance
+        dx = enemy_center_x - player_center_x
+        dy = enemy_center_y - player_center_y
+        distance = (dx * dx + dy * dy) ** 0.5
+        
+        # Attack if within melee range (very close)
+        attack_distance = 30  # pixels from center to center
+        
+        if distance <= attack_distance:
+            self.is_attacking = True
+            self.attack_cooldown = 1500  # 1.5 second cooldown
+            print(f"[DEBUG] Enemy attacking at distance: {int(distance)}px")
+            return 5  # Damage amount
+        return 0
+
+    def update(self, dt):
+        """Update enemy state and animation"""
+        if self.is_dead:
+            if self.death_timer > 0:
+                self.death_timer -= dt
+            return
+        
+        # Update timers
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= dt
+        
+        if self.is_hurt and self.hurt_timer > 0:
+            self.hurt_timer -= dt
+            if self.hurt_timer <= 0:
+                self.is_hurt = False
+        
+        # Determine current animation
+        if self.is_dead:
+            anim_key = f'death_{self.facing.lower()}'
+        elif self.is_hurt:
+            anim_key = f'hurt_{self.facing.lower()}'
+        elif self.is_attacking:
+            anim_key = f'attack_{self.facing.lower()}'
+        else:
+            anim_key = f'idle_{self.facing.lower()}'
+        
+        # Use idle as fallback
+        if anim_key not in self.animations:
+            anim_key = 'idle'
+        
+        # Update animation frame
+        current_time = time.time() * 1000
+        anim = self.animations[anim_key]
+        
+        # Reset frame if out of bounds (happens when switching animations)
+        if self.current_frame >= len(anim['frames']):
+            self.current_frame = 0
+        
+        if current_time - self.last_update > anim['durations'][self.current_frame]:
+            self.current_frame += 1
+            
+            # Loop or stop animation
+            if self.is_dead or self.is_hurt or self.is_attacking:
+                # Non-looping animations
+                if self.current_frame >= len(anim['frames']):
+                    self.current_frame = len(anim['frames']) - 1
+                    if self.is_attacking:
+                        self.is_attacking = False
+                        self.current_frame = 0
+            else:
+                # Looping animations
+                self.current_frame = self.current_frame % len(anim['frames'])
+            
+            self.last_update = current_time
+        
+        self.current_animation = anim_key
+    
+    def draw(self, surface, camera_x, camera_y):
+        """Draw the enemy"""
+        if self.is_dead and self.death_timer <= 0:
+            return  # Don't draw if fully dead
+        
+        anim = self.animations.get(self.current_animation, self.animations['idle'])
+        if anim['frames']:
+            frame = anim['frames'][self.current_frame]
+            screen_x = int(self.x) - camera_x
+            screen_y = int(self.y) - camera_y
+            surface.blit(frame, (screen_x, screen_y))
+            
+            # Draw HP bar above enemy
+            if not self.is_dead and self.hp < self.max_hp:
+                bar_width = 30
+                bar_height = 4
+                bar_x = screen_x + (self.rect.width // 2) - (bar_width // 2)
+                bar_y = screen_y - 10
+                
+                # Background
+                pygame.draw.rect(surface, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+                # HP
+                hp_percent = self.hp / self.max_hp
+                hp_width = int(bar_width * hp_percent)
+                pygame.draw.rect(surface, (255, 0, 0), (bar_x, bar_y, hp_width, bar_height))
+
+# List of active enemies
+enemies = []
+
+# Spawn some test enemies
+enemies.append(Enemy(500, 1200, 'Rat1', 'West'))
+enemies.append(Enemy(600, 1150, 'Rat1', 'South'))
+enemies.append(Enemy(400, 1100, 'Rat1', 'East'))
+
+
 # Load object definitions grouped by tileset from JSON
 with open(os.path.join('Tilesets', 'objects.json'), 'r') as f:
     object_defs_by_tileset = json.load(f)
 
 # Cache for scaled tiles to avoid re-scaling every frame
 _SCALED_TILES_CACHE = {}
-ARROW_SPEED = 7
-ARROW_RANGE = 480  # pixels
-# Fine-tune spawn alignment so the arrow appears centered on the character/bow
-ARROW_SPAWN_OFFSET_X_EAST = 0
-ARROW_SPAWN_OFFSET_X_WEST = 0
-ARROW_SPAWN_OFFSET_Y = -4
 
-# Load projectile images
-arrow_east_img = pygame.image.load(os.path.join('Characters', 'Archer', 'Arrow_east.png')).convert_alpha()
-arrow_west_img = pygame.image.load(os.path.join('Characters', 'Archer', 'Arrow_west.png')).convert_alpha()
+# Removed arrow projectile system (sword character doesn't use projectiles)
+# ARROW_SPEED = 7
+# ARROW_RANGE = 480  # pixels
 
-# Active projectiles
+# Active projectiles (kept for potential future use)
 projectiles = []  # each: {x,y,vx,vy,img,dist}
-
-def spawn_arrow(facing: str, origin_rect: pygame.Rect):
-    """Spawn an arrow projectile from player's center, in facing direction."""
-    if facing not in ('east', 'west'):
-        facing = 'east'
-    img = arrow_east_img if facing == 'east' else arrow_west_img
-    # Center the arrow on the character, with fine-tune offsets
-    cx, cy = origin_rect.centerx, origin_rect.centery
-    x = cx - img.get_width() // 2 + (ARROW_SPAWN_OFFSET_X_EAST if facing == 'east' else ARROW_SPAWN_OFFSET_X_WEST)
-    y = cy - img.get_height() // 2 + ARROW_SPAWN_OFFSET_Y
-    speed = ARROW_SPEED if facing == 'east' else -ARROW_SPEED
-    projectiles.append({'x': float(x), 'y': float(y), 'vx': float(speed), 'vy': 0.0, 'img': img, 'dist': 0.0})
 _COL_TILE_SURF = None  # cached semi-transparent tile for collision overlay
 
 def _get_collision_tile_surface():
@@ -761,8 +1038,11 @@ while run:
     # Determine movement speed based on running state
     current_speed = PLAYER_RUN_SPEED if is_running else PLAYER_SPEED
 
-    # Update floating point position (skip while attacking)
-    if not is_attacking:
+    # Check if current attack allows movement
+    can_move_during_attack = is_attacking and current_attack and ('walk_attack' in current_attack or 'run_attack' in current_attack)
+
+    # Update floating point position (allow movement during walk/run attacks)
+    if not is_attacking or can_move_during_attack:
         if key[pygame.K_a]:
             player_x -= current_speed
             moving_west = True
@@ -812,22 +1092,40 @@ while run:
     # Determine the animation based on movement direction and running state
     animation_prefix = 'run_' if is_running else ''
 
-    if not is_attacking and moving_east:
+    # During walk/run attacks, keep moving
+    if is_attacking and current_attack and ('walk_attack' in current_attack or 'run_attack' in current_attack):
+        # Allow movement during walk/run attacks
+        current_animation = current_attack
+        # Update facing direction based on current movement
+        if moving_east:
+            last_facing_direction = 'east'
+            last_horizontal_direction = 'east'
+        elif moving_west:
+            last_facing_direction = 'west'
+            last_horizontal_direction = 'west'
+        elif moving_north:
+            last_facing_direction = 'north'
+        elif moving_south:
+            last_facing_direction = 'south'
+    elif is_attacking and current_attack:
+        # Standing attack - stop movement
+        current_animation = current_attack
+    elif moving_east:
         current_animation = f'{animation_prefix}east'
         last_facing_direction = 'east'
-    elif not is_attacking and moving_west:
+        last_horizontal_direction = 'east'
+    elif moving_west:
         current_animation = f'{animation_prefix}west'
         last_facing_direction = 'west'
-    elif not is_attacking and moving_north:
-        # Use last horizontal direction for north movement
-        current_animation = f'{animation_prefix}north_{last_horizontal_direction}'
-        last_facing_direction = last_horizontal_direction
-    elif not is_attacking and moving_south:
-        # Use last horizontal direction for south movement
-        current_animation = f'{animation_prefix}south_{last_horizontal_direction}'
-        last_facing_direction = last_horizontal_direction
-    elif is_attacking and current_attack:
-        current_animation = current_attack
+        last_horizontal_direction = 'west'
+    elif moving_north:
+        # Pure north movement - use north animation
+        current_animation = f'{animation_prefix}north'
+        last_facing_direction = 'north'
+    elif moving_south:
+        # Pure south movement - use south animation
+        current_animation = f'{animation_prefix}south'
+        last_facing_direction = 'south'
 
     # Update the rect position from floating point position
     player.x = round(player_x)
@@ -857,25 +1155,49 @@ while run:
             is_moving = False  # Stop the walking animation
             break  # Stop checking other objects once we hit one
 
-    # Update projectiles (movement + tile collisions) BEFORE handling animations/drawing
-    if projectiles:
-        remaining = []
-        for p in projectiles:
-            # Move
-            p['x'] += p['vx']
-            p['y'] += p['vy']
-            p['dist'] += abs(p['vx']) + abs(p['vy'])
-            # Build rect in world coords for collision
-            img = p['img']
-            rect = pygame.Rect(int(p['x']), int(p['y']), img.get_width(), img.get_height())
-            # Tile collision
-            if hasattr(current_scene, 'collides_rect_with_tiles') and current_scene.collides_rect_with_tiles(rect):
-                continue  # discard projectile on impact
-            # Range limit
-            if p['dist'] >= ARROW_RANGE:
-                continue
-            remaining.append(p)
-        projectiles[:] = remaining
+
+    # ==================== ENEMY UPDATES ====================
+    dt = clock.get_time()  # Delta time in milliseconds
+    
+    # Update all enemies
+    for enemy in enemies[:]:  # Copy list to allow removal
+        enemy.update(dt)
+        enemy.rect.x = int(enemy.x)
+        enemy.rect.y = int(enemy.y)
+        
+        # Check if player's attack hits enemy (single target - closest enemy only)
+        if is_attacking and current_attack and not enemy.is_dead:
+            # Calculate distance to this enemy
+            dx = player.centerx - enemy.rect.centerx
+            dy = player.centery - enemy.rect.centery
+            distance = (dx * dx + dy * dy) ** 0.5
+            
+            # Track closest enemy in attack range
+            attack_range = 40  # pixels from player center
+            if distance <= attack_range:
+                if not hasattr(enemy, '_hit_this_attack'):
+                    enemy._hit_this_attack = False
+                
+                # Only damage if not already hit during this attack animation
+                if not enemy._hit_this_attack:
+                    damage = 10
+                    enemy.take_damage(damage)
+                    enemy._hit_this_attack = True
+                    print(f"[DEBUG] Hit enemy at {int(distance)}px! Enemy HP: {enemy.hp}/{enemy.max_hp}")
+        
+        # Check if enemy attacks player
+        if not enemy.is_dead:
+            damage = enemy.attack_player(player)
+            if damage > 0:
+                player_hp = max(0, player_hp - damage)
+                print(f"[DEBUG] Enemy attacked! Player HP: {player_hp}/{player_max_hp}")
+    
+    # Remove fully dead enemies after death animation
+    enemies[:] = [e for e in enemies if not (e.is_dead and e.death_timer <= 0)]
+
+    # Update projectiles (disabled for sword character - no ranged attacks)
+    # Keeping structure for potential future use
+    projectiles.clear()  # Clear any stray projectiles
 
     # Handle animation
     current_time = time.time() * 1000
@@ -891,10 +1213,13 @@ while run:
                 # Non-looping animation ended
                 ended_attack = current_attack if is_attacking else None
                 anim['current_frame'] = len(anim['frames']) - 1
-                # Spawn projectile at the end of shot animations
-                if ended_attack and ended_attack.startswith('shot'):
-                    spawn_arrow(last_facing_direction, player)
+                # Sword character doesn't spawn projectiles (no ranged attacks)
+                # if ended_attack and ended_attack.startswith('shot'):
+                #     spawn_arrow(last_facing_direction, player)
                 if is_attacking:
+                    # Reset hit flags on all enemies
+                    for e in enemies:
+                        e._hit_this_attack = False
                     is_attacking = False
                     current_attack = None
                     # Reset to static; facing image will be used below
@@ -903,11 +1228,15 @@ while run:
                     anim['current_frame'] = 0
         anim['last_update'] = current_time
 
-    # Draw projectiles (map-relative), under the player so player appears above
-    if projectiles:
-        for p in projectiles:
-            screen.blit(p['img'], (int(p['x']) - camera_x, int(p['y']) - camera_y))
+    # Draw projectiles (disabled for sword character)
+    # if projectiles:
+    #     for p in projectiles:
+    #         screen.blit(p['img'], (int(p['x']) - camera_x, int(p['y']) - camera_y))
 
+    # Draw enemies
+    for enemy in enemies:
+        enemy.draw(screen, camera_x, camera_y)
+    
     # Draw the current animation frame or facing image
     if is_attacking and current_attack:
         attack_anim = animation_data[current_attack]
@@ -937,6 +1266,9 @@ while run:
         hitbox_surface = pygame.Surface((hitbox.width, hitbox.height), pygame.SRCALPHA)
         hitbox_surface.fill((0, 255, 0, 100))  # semi-transparent green
         screen.blit(hitbox_surface, hitbox_rect)
+
+    # Draw health bar (top-left corner)
+    draw_health_bar(screen, HEALTH_BAR_X, HEALTH_BAR_Y, player_hp, player_max_hp, HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT, HEALTH_BAR_BORDER)
 
     # Draw and handle items for the current scene
     for item in getattr(current_scene, 'items', []):
@@ -1006,27 +1338,33 @@ while run:
             # --- COMBAT HOTKEYS ---
             if not is_attacking:
                 if event.key == pygame.K_j and ('attack1_east' in animation_data or 'attack1_west' in animation_data):
-                    # Primary attack
+                    # Primary melee attack (sword slash)
                     face = last_facing_direction
-                    key_name = f"attack1_{face}"
+                    
+                    # Choose attack animation based on movement state
+                    if is_moving and is_running:
+                        # Running attack
+                        key_name = f"run_attack_{face}"
+                    elif is_moving:
+                        # Walking attack
+                        key_name = f"walk_attack_{face}"
+                    else:
+                        # Standing attack
+                        key_name = f"attack1_{face}"
+                    
+                    # Fall back to standing attack if specific animation not available
+                    if key_name not in animation_data:
+                        key_name = f"attack1_{face}"
+                    
                     if key_name in animation_data:
                         current_attack = key_name
                         is_attacking = True
                         animation_data[current_attack]['current_frame'] = 0
                         animation_data[current_attack]['last_update'] = time.time() * 1000
-                elif event.key == pygame.K_k and ('shot1_east' in animation_data or 'shot1_west' in animation_data):
-                    # Shot 1
-                    face = last_facing_direction
-                    key_name = f"shot1_{face}"
-                    # Fallback to shot2 if shot1 not available on this side
-                    if key_name not in animation_data and f"shot2_{face}" in animation_data:
-                        key_name = f"shot2_{face}"
-                    if key_name in animation_data:
-                        current_attack = key_name
-                        is_attacking = True
-                        animation_data[current_attack]['current_frame'] = 0
-                        animation_data[current_attack]['last_update'] = time.time() * 1000
-                        # Arrow will be spawned when the shot animation finishes
+                # K key removed - sword character has no ranged attacks
+                # elif event.key == pygame.K_k and ('shot1_east' in animation_data or 'shot1_west' in animation_data):
+                #     # Shot 1 (disabled for sword character)
+                #     pass
 
             if event.key == pygame.K_F1:
                 current_scene = scenes['overworld']
@@ -1042,10 +1380,16 @@ while run:
                 print("[DEBUG] Jumped to cave scene.")
             elif event.key == pygame.K_F3:
                 current_scene = scenes['house']
-                player.center = (265, 425)
-                player_x = float(player.x)
-                player_y = float(player.y)
-                print("[DEBUG] Jumped to house scene.")
+
+            # --- HEALTH TEST KEYS ---
+            if event.key == pygame.K_h:
+                # Take damage (for testing)
+                player_hp = max(0, player_hp - 10)
+                print(f"[DEBUG] Player took damage! HP: {player_hp}/{player_max_hp}")
+            elif event.key == pygame.K_g:
+                # Heal (for testing)
+                player_hp = min(player_max_hp, player_hp + 15)
+                print(f"[DEBUG] Player healed! HP: {player_hp}/{player_max_hp}")
             elif event.key == pygame.K_F5:
                 if 'cave_2' in scenes:
                     current_scene = scenes['cave_2']
